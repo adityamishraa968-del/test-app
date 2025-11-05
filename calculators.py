@@ -17,16 +17,29 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # ---- FUNCTIONS ----
-def append(value): st.session_state.expr += value
-def clear(): st.session_state.expr = ""
-def delete(): st.session_state.expr = st.session_state.expr[:-1]
+def append(value): 
+    st.session_state.expr += value
 
-def tsin(x): return math.sin(math.radians(x)) if st.session_state.mode=="DEG" else math.sin(x)
-def tcos(x): return math.cos(math.radians(x)) if st.session_state.mode=="DEG" else math.cos(x)
-def ttan(x): return math.tan(math.radians(x)) if st.session_state.mode=="DEG" else math.tan(x)
+def clear(): 
+    st.session_state.expr = ""
 
-def nPr(n, r): return math.factorial(int(n)) // math.factorial(int(n) - int(r))
-def nCr(n, r): return math.comb(int(n), int(r))
+def delete(): 
+    st.session_state.expr = st.session_state.expr[:-1]
+
+def tsin(x): 
+    return math.sin(math.radians(x)) if st.session_state.mode=="DEG" else math.sin(x)
+
+def tcos(x): 
+    return math.cos(math.radians(x)) if st.session_state.mode=="DEG" else math.cos(x)
+
+def ttan(x): 
+    return math.tan(math.radians(x)) if st.session_state.mode=="DEG" else math.tan(x)
+
+def nPr(n, r): 
+    return math.factorial(int(n)) // math.factorial(int(n) - int(r))
+
+def nCr(n, r): 
+    return math.comb(int(n), int(r))
 
 def evaluate_expression(expr: str):
     try:
@@ -36,8 +49,7 @@ def evaluate_expression(expr: str):
         expr = expr.replace("ln","math.log").replace("log","math.log10")
         expr = expr.replace("nPr","nPr").replace("nCr","nCr")
         expr = expr.replace("Ans", str(st.session_state.ans))
-        result = eval(expr, {"math": math, "tsin": tsin, "tcos": tcos, "ttan": ttan, 
-                             "nPr": nPr, "nCr": nCr})
+        result = eval(expr, {"math": math, "tsin": tsin, "tcos": tcos, "ttan": ttan, "nPr": nPr, "nCr": nCr})
         st.session_state.ans = result
         st.session_state.history.insert(0, (st.session_state.expr, result))
         st.session_state.expr = str(result)
@@ -53,7 +65,6 @@ with col1:
 with col2:
     if st.button(st.session_state.mode):
         st.session_state.mode = "RAD" if st.session_state.mode == "DEG" else "DEG"
-        st.rerun()
 
 st.caption(f"Memory: {round(st.session_state.memory,6)} | Ans: {round(st.session_state.ans,6)}")
 
@@ -69,27 +80,46 @@ rows = [
     ["nCr","nPr","x²","^","!"]
 ]
 
+# ---- BUTTON ACTIONS ----
+def handle_button(label):
+    if label == "AC":
+        clear()
+    elif label == "DEL":
+        delete()
+    elif label == "=":
+        evaluate_expression(st.session_state.expr)
+    elif label == "√":
+        append("√(")
+    elif label == "x²":
+        append("**2")
+    elif label == "±":
+        append("(-")
+    elif label == "!":
+        append("math.factorial(")
+    elif label == "M+":
+        try:
+            st.session_state.memory += float(eval(st.session_state.expr or "0"))
+        except:
+            pass
+    elif label == "M-":
+        try:
+            st.session_state.memory -= float(eval(st.session_state.expr or "0"))
+        except:
+            pass
+    elif label == "MR":
+        append(str(st.session_state.memory))
+    elif label == "MC":
+        st.session_state.memory = 0
+    else:
+        append(label)
+
+# ---- BUTTON GRID ----
 for row in rows:
     cols = st.columns(5)
     for i, label in enumerate(row):
         if cols[i].button(label, use_container_width=True):
-            if label == "AC": clear()
-            elif label == "DEL": delete()
-            elif label == "=": evaluate_expression(st.session_state.expr)
-            elif label == "√": append("√(")
-            elif label == "x²": append("**2")
-            elif label == "±": append("(-")
-            elif label == "!": append("math.factorial(")
-            elif label == "M+": 
-                try: st.session_state.memory += float(eval(st.session_state.expr or "0"))
-                except: pass
-            elif label == "M-": 
-                try: st.session_state.memory -= float(eval(st.session_state.expr or "0"))
-                except: pass
-            elif label == "MR": append(str(st.session_state.memory))
-            elif label == "MC": st.session_state.memory = 0
-            else: append(label)
-            st.rerun()
+            handle_button(label)
+            st.experimental_rerun()  # ✅ safer rerun than st.rerun()
 
 # ---- HISTORY ----
 with st.expander("🧾 History"):
@@ -102,10 +132,11 @@ with st.expander("🧾 History"):
 st.markdown("---")
 st.markdown("""
 **Features:**
-- Works fully in browser — no Tkinter needed  
-- `DEG/RAD` switch for trig functions  
-- Supports `sin`, `cos`, `tan`, `ln`, `log`, `√`, `x²`, `%`, `π`, `e`, `!`, `nCr`, `nPr`, `Ans`  
-- Memory functions: `M+`, `M-`, `MR`, `MC`  
-- History view with last 20 calculations  
+- Fully browser-based (no Tkinter)
+- `DEG/RAD` mode switch  
+- Trig: `sin`, `cos`, `tan`, `ln`, `log`, `√`, `x²`, `%`, `π`, `e`, `!`, `nCr`, `nPr`, `Ans`  
+- Memory keys: `M+`, `M-`, `MR`, `MC`  
+- History (last 20 results)
 """)
+
 
