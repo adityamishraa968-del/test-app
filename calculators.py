@@ -1,156 +1,111 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+import streamlit as st
 import math
 
-class ScientificCalculator(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Casio fx-991 • Scientific Calculator")
-        self.geometry("420x620")
-        self.resizable(False, False)
-        self.configure(bg="#1b1f23")
+# ---- PAGE CONFIG ----
+st.set_page_config(page_title="Casio fx-991 • Scientific Calculator", page_icon="🧮", layout="centered")
 
-        self.expression = tk.StringVar(value="")
-        self.mode = "DEG"
-        self.memory = 0
-        self.ans = 0
+# ---- SESSION STATE ----
+if "expr" not in st.session_state:
+    st.session_state.expr = ""
+if "mode" not in st.session_state:
+    st.session_state.mode = "DEG"
+if "memory" not in st.session_state:
+    st.session_state.memory = 0.0
+if "ans" not in st.session_state:
+    st.session_state.ans = 0.0
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-        self._build_ui()
+# ---- FUNCTIONS ----
+def append(value): st.session_state.expr += value
+def clear(): st.session_state.expr = ""
+def delete(): st.session_state.expr = st.session_state.expr[:-1]
 
-    # ---------- UI ----------
-    def _build_ui(self):
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure("TButton", font=("Segoe UI", 12), padding=6)
-        style.configure("Disp.TLabel", background="#1b1f23", foreground="#00ff99", font=("Consolas", 18))
+def tsin(x): return math.sin(math.radians(x)) if st.session_state.mode=="DEG" else math.sin(x)
+def tcos(x): return math.cos(math.radians(x)) if st.session_state.mode=="DEG" else math.cos(x)
+def ttan(x): return math.tan(math.radians(x)) if st.session_state.mode=="DEG" else math.tan(x)
 
-        top = ttk.Frame(self, padding=8)
-        top.pack(fill="x")
+def nPr(n, r): return math.factorial(int(n)) // math.factorial(int(n) - int(r))
+def nCr(n, r): return math.comb(int(n), int(r))
 
-        info = ttk.Frame(top)
-        info.pack(fill="x")
-        self.mode_label = ttk.Label(info, text=f"{self.mode}", foreground="#aaa")
-        self.mode_label.pack(side="left")
-        self.mem_label = ttk.Label(info, text=f"M:{self.memory}", foreground="#aaa")
-        self.mem_label.pack(side="right")
+def evaluate_expression(expr: str):
+    try:
+        expr = expr.replace("×","*").replace("÷","/").replace("^","**").replace("%","/100")
+        expr = expr.replace("√","math.sqrt").replace("π","math.pi").replace("e","math.e")
+        expr = expr.replace("sin","tsin").replace("cos","tcos").replace("tan","ttan")
+        expr = expr.replace("ln","math.log").replace("log","math.log10")
+        expr = expr.replace("nPr","nPr").replace("nCr","nCr")
+        expr = expr.replace("Ans", str(st.session_state.ans))
+        result = eval(expr, {"math": math, "tsin": tsin, "tcos": tcos, "ttan": ttan, 
+                             "nPr": nPr, "nCr": nCr})
+        st.session_state.ans = result
+        st.session_state.history.insert(0, (st.session_state.expr, result))
+        st.session_state.expr = str(result)
+    except Exception as e:
+        st.error(f"Error: {e}")
 
-        disp = ttk.Label(top, textvariable=self.expression, style="Disp.TLabel", anchor="e")
-        disp.pack(fill="x", ipady=18)
+# ---- HEADER ----
+st.title("🧮 Casio fx-991 Style Scientific Calculator")
 
-        grid = ttk.Frame(self, padding=8)
-        grid.pack(expand=True, fill="both")
+col1, col2 = st.columns([3,1])
+with col1:
+    st.text_input("Expression", key="expr", label_visibility="hidden")
+with col2:
+    if st.button(st.session_state.mode):
+        st.session_state.mode = "RAD" if st.session_state.mode == "DEG" else "DEG"
+        st.rerun()
 
-        buttons = [
-            ["AC","DEL","(",")","%"],
-            ["sin","cos","tan","ln","log"],
-            ["7","8","9","÷","√"],
-            ["4","5","6","×","x²"],
-            ["1","2","3","-","^"],
-            ["0",".","+/-","+","="],
-            ["π","e","M+","M-","MR"],
-            ["MC","RAD/DEG","Ans","nCr","nPr"]
-        ]
+st.caption(f"Memory: {round(st.session_state.memory,6)} | Ans: {round(st.session_state.ans,6)}")
 
-        for row in buttons:
-            fr = ttk.Frame(grid)
-            fr.pack(fill="x", pady=3)
-            for label in row:
-                b = ttk.Button(fr, text=label, command=lambda t=label: self.click(t))
-                b.pack(side="left", expand=True, fill="x", padx=3)
+# ---- BUTTON LAYOUT ----
+rows = [
+    ["AC","DEL","(",")","%"],
+    ["sin","cos","tan","ln","log"],
+    ["7","8","9","÷","√"],
+    ["4","5","6","×","-"],
+    ["1","2","3","+","="],
+    ["0",".","Ans","π","e"],
+    ["M+","M-","MR","MC","±"],
+    ["nCr","nPr","x²","^","!"]
+]
 
-    # ---------- Logic ----------
-    def click(self, key):
-        if key == "AC":
-            self.expression.set("")
-        elif key == "DEL":
-            self.expression.set(self.expression.get()[:-1])
-        elif key == "=":
-            self.calculate()
-        elif key == "RAD/DEG":
-            self.toggle_mode()
-        elif key == "√":
-            self.append("sqrt(")
-        elif key == "x²":
-            self.append("**2")
-        elif key == "+/-":
-            self.append("(-")
-        elif key == "π":
-            self.append(str(math.pi))
-        elif key == "e":
-            self.append(str(math.e))
-        elif key == "M+":
-            self.memory_add()
-        elif key == "M-":
-            self.memory_sub()
-        elif key == "MR":
-            self.append(str(self.memory))
-        elif key == "MC":
-            self.memory_clear()
-        elif key == "Ans":
-            self.append(str(self.ans))
-        elif key in ("sin","cos","tan","ln","log","nCr","nPr"):
-            self.append(f"{key}(")
-        else:
-            self.append(key)
+for row in rows:
+    cols = st.columns(5)
+    for i, label in enumerate(row):
+        if cols[i].button(label, use_container_width=True):
+            if label == "AC": clear()
+            elif label == "DEL": delete()
+            elif label == "=": evaluate_expression(st.session_state.expr)
+            elif label == "√": append("√(")
+            elif label == "x²": append("**2")
+            elif label == "±": append("(-")
+            elif label == "!": append("math.factorial(")
+            elif label == "M+": 
+                try: st.session_state.memory += float(eval(st.session_state.expr or "0"))
+                except: pass
+            elif label == "M-": 
+                try: st.session_state.memory -= float(eval(st.session_state.expr or "0"))
+                except: pass
+            elif label == "MR": append(str(st.session_state.memory))
+            elif label == "MC": st.session_state.memory = 0
+            else: append(label)
+            st.rerun()
 
-    def append(self, value):
-        self.expression.set(self.expression.get() + value)
+# ---- HISTORY ----
+with st.expander("🧾 History"):
+    if not st.session_state.history:
+        st.write("No calculations yet.")
+    else:
+        for expr, res in st.session_state.history[:20]:
+            st.code(f"{expr} = {res}")
 
-    def toggle_mode(self):
-        self.mode = "RAD" if self.mode == "DEG" else "DEG"
-        self.mode_label.config(text=self.mode)
+st.markdown("---")
+st.markdown("""
+**Features:**
+- Works fully in browser — no Tkinter needed  
+- `DEG/RAD` switch for trig functions  
+- Supports `sin`, `cos`, `tan`, `ln`, `log`, `√`, `x²`, `%`, `π`, `e`, `!`, `nCr`, `nPr`, `Ans`  
+- Memory functions: `M+`, `M-`, `MR`, `MC`  
+- History view with last 20 calculations  
+""")
 
-    def calculate(self):
-        try:
-            expr = self.expression.get()
-            expr = expr.replace("×", "*").replace("÷", "/").replace("^", "**").replace("%", "/100")
-            expr = expr.replace("√", "math.sqrt")
-            result = self.safe_eval(expr)
-            self.ans = result
-            self.expression.set(str(result))
-            self.mem_label.config(text=f"M:{self.memory}")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-
-    def memory_add(self):
-        try:
-            val = float(eval(self.expression.get() or "0"))
-            self.memory += val
-            self.mem_label.config(text=f"M:{self.memory}")
-        except:
-            pass
-
-    def memory_sub(self):
-        try:
-            val = float(eval(self.expression.get() or "0"))
-            self.memory -= val
-            self.mem_label.config(text=f"M:{self.memory}")
-        except:
-            pass
-
-    def memory_clear(self):
-        self.memory = 0
-        self.mem_label.config(text=f"M:{self.memory}")
-
-    def safe_eval(self, expr):
-        expr = expr.replace("sin", "self.trig_sin")
-        expr = expr.replace("cos", "self.trig_cos")
-        expr = expr.replace("tan", "self.trig_tan")
-        expr = expr.replace("ln", "math.log")
-        expr = expr.replace("log", "math.log10")
-        expr = expr.replace("nCr", "math.comb")
-        expr = expr.replace("nPr", "self.nPr")
-        return eval(expr, {"math": math, "self": self})
-
-    def trig_sin(self, x):
-        return math.sin(math.radians(x)) if self.mode == "DEG" else math.sin(x)
-    def trig_cos(self, x):
-        return math.cos(math.radians(x)) if self.mode == "DEG" else math.cos(x)
-    def trig_tan(self, x):
-        return math.tan(math.radians(x)) if self.mode == "DEG" else math.tan(x)
-    def nPr(self, n, r):
-        return math.factorial(int(n)) // math.factorial(int(n) - int(r))
-
-if __name__ == "__main__":
-    app = ScientificCalculator()
-    app.mainloop()
