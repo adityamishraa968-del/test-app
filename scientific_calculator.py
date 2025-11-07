@@ -105,13 +105,4 @@ with st.expander("🧾 History"):
         for e, r in history[:20]:
             st.code(f"{e} = {r}")
 
-st.markdown("---")
-st.markdown("""
-**Features:**
-- Works 100% on Streamlit Cloud and Desktop (no Tkinter)
-- `DEG/RAD` mode for trig
-- Functions: sin, cos, tan, ln, log, √, x², %, π, e, factorial, nCr, nPr
-- Memory: M+, M-, MR, MC
-- Ans and 20-calculation history
-""")
-
+# 🟢 Features section removed completely
